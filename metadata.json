@@ -1,0 +1,6 @@
+{
+  "name": "Butter Toast",
+  "description": "Tactile butter spreading simulator with knife physics, custom toasts, and increasing difficulty levels.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

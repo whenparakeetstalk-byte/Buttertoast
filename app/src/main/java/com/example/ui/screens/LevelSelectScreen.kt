@@ -19,7 +19,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.example.model.ButterType
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PlayArrow
@@ -29,6 +31,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Stars
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,6 +43,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -66,8 +72,9 @@ fun LevelSelectScreen(
     unlockedLevel: Int,
     totalStars: Int,
     coins: Int,
+    spendablePoints: Int,
     onSelectLevel: (Level) -> Unit,
-    onOpenShop: () -> Unit,
+    onOpenShop: (Int) -> Unit,
     onOpenSandbox: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -98,7 +105,7 @@ fun LevelSelectScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
                     // Header title & currencies
                     Row(
@@ -121,20 +128,42 @@ fun LevelSelectScreen(
                             )
                         }
 
-                        // Currency badges
+                        // Currency badges: Coins, Points & Stars (clickable to open Point Perks / Shop)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = Color(0xFFFFD54F).copy(alpha = 0.25f),
-                                modifier = Modifier.padding(end = 6.dp)
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { onOpenShop(0) }
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = "$coins", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFFB45309))
+                                    Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(text = "$coins", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFB45309))
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFEDE9FE),
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { onOpenShop(3) } // Opens Point Perks tab!
+                                    .testTag("spendable_points_pill")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(imageVector = Icons.Default.Stars, contentDescription = null, tint = Color(0xFF7E22CE), modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(text = "$spendablePoints pts", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF6B21A8))
                                 }
                             }
 
@@ -143,12 +172,12 @@ fun LevelSelectScreen(
                                 color = Color(0xFFFFE082).copy(alpha = 0.35f)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = "$totalStars / 30", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF78350F))
+                                    Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(text = "$totalStars", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF78350F))
                                 }
                             }
                         }
@@ -156,42 +185,106 @@ fun LevelSelectScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Action buttons: Shop & Sandbox
+                    // Top Navigation Bar: Levels (Current), Bakery (Breads/Knives), Bakery Shop (Points & Power-Ups)
+                    TabRow(
+                        selectedTabIndex = 0,
+                        containerColor = Color.Transparent,
+                        divider = {}
+                    ) {
+                        Tab(
+                            selected = true,
+                            onClick = { /* already on levels */ },
+                            text = {
+                                Text(
+                                    text = "Levels",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFD97706),
+                                    fontSize = 13.sp
+                                )
+                            }
+                        )
+                        Tab(
+                            selected = false,
+                            onClick = { onOpenShop(0) }, // Tab 0: Butter Knives & Breads
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.Restaurant, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color(0xFFB45309))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Bakery",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            },
+                            modifier = Modifier.testTag("tab_bakery")
+                        )
+                        Tab(
+                            selected = false,
+                            onClick = { onOpenShop(3) }, // Tab 3: Point Perks & Upgrades
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.ShoppingBag, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color(0xFF7E22CE))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Bakery Shop",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            },
+                            modifier = Modifier.testTag("tab_bakery_shop")
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Quick Action buttons: Bakery, Bakery Shop (Spend Points), and Toast Bar
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = onOpenShop,
+                            onClick = { onOpenShop(0) },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(42.dp)
+                                .height(40.dp)
+                                .testTag("open_bakery_button")
+                        ) {
+                            Text("Bakery", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+
+                        Button(
+                            onClick = { onOpenShop(3) }, // Direct to spend points
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E22CE)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1.35f)
+                                .height(40.dp)
                                 .testTag("open_shop_button")
                         ) {
-                            Icon(imageVector = Icons.Default.ShoppingBag, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Bakery Shop", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Icon(imageVector = Icons.Default.Stars, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Bakery Shop (Perks)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
 
                         OutlinedButton(
                             onClick = onOpenSandbox,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
-                                .weight(1f)
-                                .height(42.dp)
+                                .weight(1.05f)
+                                .height(40.dp)
                                 .testTag("open_sandbox_button")
                         ) {
-                            Icon(imageVector = Icons.Default.Restaurant, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Toast Bar", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Toast Bar", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
 
                         IconButton(
                             onClick = { showSettings = true },
                             modifier = Modifier
-                                .size(42.dp)
+                                .size(40.dp)
                                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
                                 .testTag("open_settings_button")
                         ) {
@@ -199,7 +292,7 @@ fun LevelSelectScreen(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = "Options",
                                 tint = Color(0xFFD97706),
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -252,14 +345,32 @@ fun LevelSelectScreen(
                                 modifier = Modifier
                                     .size(46.dp)
                                     .background(
-                                        if (isUnlocked) Brush.linearGradient(listOf(Color(0xFFF59E0B), Color(0xFFD97706)))
-                                        else Brush.linearGradient(listOf(Color(0xFF9E9E9E), Color(0xFF757575))),
+                                        when {
+                                            !isUnlocked -> Brush.linearGradient(listOf(Color(0xFF9E9E9E), Color(0xFF757575)))
+                                            level.isHapticOnly -> Brush.linearGradient(listOf(Color(0xFF6366F1), Color(0xFF312E81)))
+                                            level.isBusRide -> Brush.linearGradient(listOf(Color(0xFF0284C7), Color(0xFF0369A1)))
+                                            else -> Brush.linearGradient(listOf(Color(0xFFF59E0B), Color(0xFFD97706)))
+                                        },
                                         CircleShape
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (isUnlocked) {
-                                    if (level.id == 0) {
+                                    if (level.isBusRide) {
+                                        Icon(
+                                            imageVector = Icons.Default.DirectionsBus,
+                                            contentDescription = "Bus Commute",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    } else if (level.isHapticOnly) {
+                                        Icon(
+                                            imageVector = Icons.Default.Vibration,
+                                            contentDescription = "Haptic Only",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    } else if (level.id == 0) {
                                         Icon(
                                             imageVector = Icons.Default.School,
                                             contentDescription = "Tutorial",
@@ -306,6 +417,96 @@ fun LevelSelectScreen(
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.ExtraBold,
                                                 color = Color(0xFF0284C7),
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    } else if (level.isCeramicPlate) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0xFFF0FDF4),
+                                            modifier = Modifier.padding(horizontal = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "CERAMIC PLATE",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color(0xFF166534),
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    } else if (level.isSmallBoard) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0xFFFEE2E2),
+                                            modifier = Modifier.padding(horizontal = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "TINY BOARD",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color(0xFFDC2626),
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    } else if (level.isHapticOnly) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0xFFEDE9FE),
+                                            modifier = Modifier.padding(horizontal = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "HAPTIC BLIND",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color(0xFF6D28D9),
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    } else if (level.isBusRide) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0xFFE0F2FE),
+                                            modifier = Modifier.padding(horizontal = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "BUS COMMUTE",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color(0xFF0369A1),
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    } else if (level.hasBananas) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0xFFFEF9C3),
+                                            modifier = Modifier.padding(horizontal = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "BANANA MAYO",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color(0xFF854D0E),
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    } else if (level.butterType == ButterType.AVOCADO_CREAM) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = Color(0xFFDCFCE7),
+                                            modifier = Modifier.padding(horizontal = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "AVOCADO",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color(0xFF15803D),
                                                 modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                                             )
                                         }

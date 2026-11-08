@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.example.model.BreadType
 import com.example.model.KnifeSkin
+import com.example.model.PointUpgrade
 import com.example.model.PowerUpType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,12 @@ class GamePreferences(context: Context) {
 
     private val _coins = MutableStateFlow(prefs.getInt(KEY_COINS, 200)) // Starting bonus 200 coins
     val coins: StateFlow<Int> = _coins.asStateFlow()
+
+    private val _spendablePoints = MutableStateFlow(loadInitialPoints())
+    val spendablePoints: StateFlow<Int> = _spendablePoints.asStateFlow()
+
+    private val _unlockedUpgrades = MutableStateFlow(loadUnlockedSet(KEY_UNLOCKED_UPGRADES, emptySet()))
+    val unlockedUpgrades: StateFlow<Set<String>> = _unlockedUpgrades.asStateFlow()
 
     private val _selectedKnifeId = MutableStateFlow(prefs.getString(KEY_SELECTED_KNIFE, "classic") ?: "classic")
     val selectedKnifeId: StateFlow<String> = _selectedKnifeId.asStateFlow()
@@ -42,6 +49,18 @@ class GamePreferences(context: Context) {
 
     private val _powerUpInventory = MutableStateFlow(loadPowerUpInventory())
     val powerUpInventory: StateFlow<Map<String, Int>> = _powerUpInventory.asStateFlow()
+
+    private fun loadInitialPoints(): Int {
+        val stored = prefs.getInt(KEY_SPENDABLE_POINTS, -1)
+        if (stored >= 0) return stored
+        // Backfill points from historical best scores so existing players have currency to spend right away!
+        var total = 500
+        for (level in LevelRepository.levels) {
+            total += prefs.getInt("best_score_level_${level.id}", 0)
+        }
+        prefs.edit().putInt(KEY_SPENDABLE_POINTS, total).apply()
+        return total
+    }
 
     private fun loadUnlockedSet(key: String, default: Set<String>): Set<String> {
         val stored = prefs.getStringSet(key, null)
@@ -86,10 +105,16 @@ class GamePreferences(context: Context) {
             editor.putInt("best_score_level_$levelId", score)
         }
 
-        // Add earned coins
-        val newCoins = _coins.value + coinsAwarded
+        // Add earned coins (doubled if Golden Toast Mastery is unlocked)
+        val finalCoinsAwarded = if (hasUpgrade("coin_multiplier")) coinsAwarded * 2 else coinsAwarded
+        val newCoins = _coins.value + finalCoinsAwarded
         editor.putInt(KEY_COINS, newCoins)
         _coins.value = newCoins
+
+        // Add earned score points to spendable bank
+        val newPoints = _spendablePoints.value + score
+        editor.putInt(KEY_SPENDABLE_POINTS, newPoints)
+        _spendablePoints.value = newPoints
 
         // Unlock next level if passed (at least 1 star)
         if (stars >= 1) {
@@ -240,9 +265,92 @@ class GamePreferences(context: Context) {
         return total
     }
 
+    fun hasUpgrade(id: String): Boolean = _unlockedUpgrades.value.contains(id)
+
+    fun buyUpgrade(upgrade: PointUpgrade): Boolean {
+        if (_spendablePoints.value >= upgrade.pointCost) {
+            val newPoints = _spendablePoints.value - upgrade.pointCost
+            val editor = prefs.edit().putInt(KEY_SPENDABLE_POINTS, newPoints)
+            _spendablePoints.value = newPoints
+
+            if (upgrade.id == "coin_pack_small") {
+                val newCoins = _coins.value + 150
+                editor.putInt(KEY_COINS, newCoins)
+                _coins.value = newCoins
+            } else if (upgrade.id == "coin_pack_large") {
+                val newCoins = _coins.value + 500
+                editor.putInt(KEY_COINS, newCoins)
+                _coins.value = newCoins
+            } else if (upgrade.id == "coin_pack_mega") {
+                val newCoins = _coins.value + 1200
+                editor.putInt(KEY_COINS, newCoins)
+                _coins.value = newCoins
+            } else if (upgrade.id == "powerup_bundle") {
+                // Grant 2 random power-ups
+                val types = PowerUpType.entries.shuffled().take(2)
+                val newMap = _powerUpInventory.value.toMutableMap()
+                for (type in types) {
+                    val count = (newMap[type.id] ?: 0) + 1
+                    editor.putInt("powerup_${type.id}", count)
+                    newMap[type.id] = count
+                }
+                _powerUpInventory.value = newMap
+            } else if (!upgrade.isRepeatable) {
+                val set = _unlockedUpgrades.value.toMutableSet()
+                set.add(upgrade.id)
+                editor.putStringSet(KEY_UNLOCKED_UPGRADES, set)
+                _unlockedUpgrades.value = set
+            }
+
+            editor.apply()
+            return true
+        }
+        return false
+    }
+
+    fun unlockKnifeWithPoints(knife: KnifeSkin, pointCost: Int): Boolean {
+        if (_spendablePoints.value >= pointCost) {
+            val newPoints = _spendablePoints.value - pointCost
+            val currentKnives = _unlockedKnives.value.toMutableSet()
+            currentKnives.add(knife.id)
+
+            prefs.edit()
+                .putInt(KEY_SPENDABLE_POINTS, newPoints)
+                .putStringSet(KEY_UNLOCKED_KNIVES, currentKnives)
+                .apply()
+
+            _spendablePoints.value = newPoints
+            _unlockedKnives.value = currentKnives
+            setSelectedKnife(knife.id)
+            return true
+        }
+        return false
+    }
+
+    fun unlockBreadWithPoints(bread: BreadType, pointCost: Int): Boolean {
+        if (_spendablePoints.value >= pointCost) {
+            val newPoints = _spendablePoints.value - pointCost
+            val currentBreads = _unlockedBreads.value.toMutableSet()
+            currentBreads.add(bread.id)
+
+            prefs.edit()
+                .putInt(KEY_SPENDABLE_POINTS, newPoints)
+                .putStringSet(KEY_UNLOCKED_BREADS, currentBreads)
+                .apply()
+
+            _spendablePoints.value = newPoints
+            _unlockedBreads.value = currentBreads
+            setSelectedBread(bread.id)
+            return true
+        }
+        return false
+    }
+
     companion object {
         private const val KEY_UNLOCKED_LEVEL = "key_unlocked_level"
         private const val KEY_COINS = "key_coins"
+        private const val KEY_SPENDABLE_POINTS = "key_spendable_points"
+        private const val KEY_UNLOCKED_UPGRADES = "key_unlocked_upgrades"
         private const val KEY_SELECTED_KNIFE = "key_selected_knife"
         private const val KEY_SELECTED_BREAD = "key_selected_bread"
         private const val KEY_UNLOCKED_KNIVES = "key_unlocked_knives"

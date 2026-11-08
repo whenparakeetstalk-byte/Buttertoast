@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Stars
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -51,27 +53,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.BreadType
 import com.example.model.KnifeSkin
+import com.example.model.PointUpgrade
 import com.example.model.PowerUpType
 
 @Composable
 fun BakeryShopScreen(
+    initialTab: Int = 0,
     coins: Int,
+    spendablePoints: Int,
     stars: Int,
     selectedKnifeId: String,
     selectedBreadId: String,
     unlockedKnives: Set<String>,
     unlockedBreads: Set<String>,
+    unlockedUpgrades: Set<String>,
     powerUpInventory: Map<String, Int>,
     onSelectKnife: (String) -> Unit,
     onSelectBread: (String) -> Unit,
     onUnlockKnife: (KnifeSkin) -> Unit,
     onUnlockBread: (BreadType) -> Unit,
     onBuyPowerUp: (PowerUpType) -> Unit,
+    onBuyUpgrade: (PointUpgrade) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Butter Knives", "Toast Types", "Power-Ups")
+    var selectedTab by remember { mutableIntStateOf(initialTab) }
+    val tabs = listOf("Butter Knives", "Toast Types", "Power-Ups", "Point Perks")
 
     Scaffold(
         topBar = {
@@ -91,26 +98,41 @@ fun BakeryShopScreen(
                             }
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Bakery & Knife Emporium",
+                                text = if (selectedTab == 3) "Bakery Shop (Spend Points)" else "Bakery & Knife Emporium",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                         }
 
-                        // Currency pills: Coins & Stars
+                        // Currency pills: Coins, Points & Stars
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = Color(0xFFFFD54F).copy(alpha = 0.25f),
-                                modifier = Modifier.padding(end = 6.dp)
+                                modifier = Modifier.padding(end = 4.dp)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = "$coins", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFFB45309))
+                                    Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(text = "$coins", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFB45309))
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFEDE9FE),
+                                modifier = Modifier.padding(end = 4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(imageVector = Icons.Default.Stars, contentDescription = null, tint = Color(0xFF7E22CE), modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(text = "$spendablePoints pts", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF6B21A8))
                                 }
                             }
 
@@ -119,12 +141,12 @@ fun BakeryShopScreen(
                                 color = Color(0xFFFFE082).copy(alpha = 0.35f)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = "$stars", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF78350F))
+                                    Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(text = "$stars", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF78350F))
                                 }
                             }
                         }
@@ -420,6 +442,146 @@ fun BakeryShopScreen(
                                     Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("${powerUp.shopCost}")
+                                }
+                            }
+                        }
+                    }
+                }
+                3 -> {
+                    // Point Perks & Upgrades Tab
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color(0xFFFAF5FF),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFC084FC)),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WorkspacePremium,
+                                    contentDescription = null,
+                                    tint = Color(0xFF7E22CE),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "Butter Mastery Point Exchange",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = Color(0xFF581C87)
+                                    )
+                                    Text(
+                                        text = "Spend points earned from your level scores to unlock permanent blade boosts, extra coin packs, and power-up boxes!",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF7E22CE)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    items(PointUpgrade.ALL_UPGRADES) { upgrade ->
+                        val isOwned = unlockedUpgrades.contains(upgrade.id) && !upgrade.isRepeatable
+                        val canAfford = spendablePoints >= upgrade.pointCost
+
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            shadowElevation = 3.dp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    width = if (isOwned) 1.5.dp else 1.dp,
+                                    color = if (isOwned) Color(0xFF2E7D32) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(18.dp)
+                                )
+                                .testTag("upgrade_item_${upgrade.id}")
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = when (upgrade.category) {
+                                                "Blade Mastery" -> Color(0xFFFEF3C7)
+                                                "Technique" -> Color(0xFFE0E7FF)
+                                                "Perks" -> Color(0xFFFCE7F3)
+                                                else -> Color(0xFFDCFCE7)
+                                            },
+                                            modifier = Modifier.padding(end = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = upgrade.category.uppercase(),
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = when (upgrade.category) {
+                                                    "Blade Mastery" -> Color(0xFFB45309)
+                                                    "Technique" -> Color(0xFF4338CA)
+                                                    "Perks" -> Color(0xFFBE185D)
+                                                    else -> Color(0xFF15803D)
+                                                },
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+
+                                        Text(
+                                            text = upgrade.name,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = upgrade.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                if (isOwned) {
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = Color(0xFFE8F5E9)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = Color(0xFF2E7D32),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Active", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32), fontSize = 13.sp)
+                                        }
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = { onBuyUpgrade(upgrade) },
+                                        enabled = canAfford,
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7E22CE)),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.testTag("buy_upgrade_${upgrade.id}")
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Stars, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("${upgrade.pointCost} pts", fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                         }

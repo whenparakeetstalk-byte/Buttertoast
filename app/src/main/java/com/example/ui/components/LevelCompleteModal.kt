@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -220,24 +221,84 @@ fun LevelCompleteModal(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Coins earned banner
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFFFD54F).copy(alpha = 0.25f),
-                    modifier = Modifier.fillMaxWidth()
+                // Coins & Points earned banners
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFFFD54F).copy(alpha = 0.25f),
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = null, tint = Color(0xFFF59E0B))
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(imageVector = Icons.Default.MonetizationOn, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "+${result.coinsEarned} Coins",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFB45309),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFEDE9FE),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(imageVector = Icons.Default.Stars, contentDescription = null, tint = Color(0xFF7E22CE), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "+${result.finalScore} Pts",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF6B21A8),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+
+                if (result.levelId == 14) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF312E81),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(
-                            text = "+${result.coinsEarned} Coins Earned!",
+                            text = "✨ Sensory Challenge Conquered!\nThe blindfold is lifted - you buttered this purely through touch!",
+                            style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFB45309),
-                            fontSize = 15.sp
+                            color = Color(0xFFE0E7FF),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
+                } else if (result.levelId == 15) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF0369A1),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "🚌 Commute Complete!\nYou navigated every bump and buttered your toast on your lap without getting any butter on your clothes!",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFF0F9FF),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(10.dp)
                         )
                     }
                 }

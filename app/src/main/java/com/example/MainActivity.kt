@@ -31,7 +31,7 @@ import com.example.ui.theme.MyApplicationTheme
 sealed interface Screen {
     data object LevelSelect : Screen
     data class Gameplay(val level: Level) : Screen
-    data object BakeryShop : Screen
+    data class BakeryShop(val initialTab: Int = 0) : Screen
     data object ToastBarSandbox : Screen
 }
 
@@ -69,6 +69,8 @@ fun ButterToastApp(
     val unlockedLevel by prefs.highestUnlockedLevel.collectAsStateWithLifecycle()
     val totalStars by prefs.totalStars.collectAsStateWithLifecycle()
     val coins by prefs.coins.collectAsStateWithLifecycle()
+    val spendablePoints by prefs.spendablePoints.collectAsStateWithLifecycle()
+    val unlockedUpgrades by prefs.unlockedUpgrades.collectAsStateWithLifecycle()
     val selectedKnifeId by prefs.selectedKnifeId.collectAsStateWithLifecycle()
     val selectedBreadId by prefs.selectedBreadId.collectAsStateWithLifecycle()
     val unlockedKnives by prefs.unlockedKnives.collectAsStateWithLifecycle()
@@ -95,11 +97,12 @@ fun ButterToastApp(
                 unlockedLevel = unlockedLevel,
                 totalStars = totalStars,
                 coins = coins,
+                spendablePoints = spendablePoints,
                 onSelectLevel = { level ->
                     currentScreen = Screen.Gameplay(level)
                 },
-                onOpenShop = {
-                    currentScreen = Screen.BakeryShop
+                onOpenShop = { targetTab ->
+                    currentScreen = Screen.BakeryShop(initialTab = targetTab)
                 },
                 onOpenSandbox = {
                     currentScreen = Screen.ToastBarSandbox
@@ -111,6 +114,7 @@ fun ButterToastApp(
                 level = screen.level,
                 knifeSkin = currentKnife,
                 powerUpInventory = powerUpInventory,
+                unlockedUpgrades = unlockedUpgrades,
                 audio = audio,
                 haptics = haptics,
                 prefs = prefs,
@@ -127,12 +131,15 @@ fun ButterToastApp(
                 currentScreen = Screen.LevelSelect
             }
             BakeryShopScreen(
+                initialTab = screen.initialTab,
                 coins = coins,
+                spendablePoints = spendablePoints,
                 stars = totalStars,
                 selectedKnifeId = selectedKnifeId,
                 selectedBreadId = selectedBreadId,
                 unlockedKnives = unlockedKnives,
                 unlockedBreads = unlockedBreads,
+                unlockedUpgrades = unlockedUpgrades,
                 powerUpInventory = powerUpInventory,
                 onSelectKnife = { prefs.setSelectedKnife(it) },
                 onSelectBread = { prefs.setSelectedBread(it) },
@@ -144,6 +151,9 @@ fun ButterToastApp(
                 },
                 onBuyPowerUp = { powerUp ->
                     prefs.buyPowerUp(powerUp)
+                },
+                onBuyUpgrade = { upgrade ->
+                    prefs.buyUpgrade(upgrade)
                 },
                 onBack = {
                     currentScreen = Screen.LevelSelect

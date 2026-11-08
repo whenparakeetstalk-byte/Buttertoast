@@ -60,8 +60,14 @@ class ToastEngine(
     var level: Level,
     var knifeSkin: KnifeSkin = KnifeSkin.CLASSIC_SILVER,
     private val audio: AudioSynthesizer,
-    private val haptics: HapticManager
+    private val haptics: HapticManager,
+    var unlockedUpgrades: Set<String> = emptySet()
 ) {
+    private fun playAudio(action: () -> Unit) {
+        if (!level.isHapticOnly) {
+            action()
+        }
+    }
     val gridWidth = 44
     val gridHeight = 44
     val grid: Array<Array<GridCell>> = Array(gridWidth) {
@@ -102,6 +108,9 @@ class ToastEngine(
     var goldenMeltActive by mutableStateOf(false)
     var infiniteButterActive by mutableStateOf(false)
     var butterMagnetActive by mutableStateOf(false)
+    var busShakeOffset by mutableStateOf(Offset.Zero)
+    private var busShakeTimer: Float = 1.8f
+    private var busShakeMagnitude: Float = 0f
 
     // Auto-spread helper
     private var autoSpreadAngle: Float = 0f
@@ -131,6 +140,9 @@ class ToastEngine(
         scorePopups.clear()
         activePowerUps.clear()
         tokenSpawnTimer = 3f
+        busShakeOffset = Offset.Zero
+        busShakeTimer = 1.8f
+        busShakeMagnitude = 0f
 
         // Reset scoring to 1000
         currentScore = 1000f
@@ -171,6 +183,10 @@ class ToastEngine(
                 if (level.breadType == BreadType.BAGEL) {
                     butterPats.add(ButterPat(x = 0.28f, y = 0.5f, volume = 1.30f))
                     butterPats.add(ButterPat(x = 0.72f, y = 0.5f, volume = 1.30f))
+                } else if (level.breadType == BreadType.CERAMIC_OVAL) {
+                    // Place 2 pats along the curved porcelain flanks
+                    butterPats.add(ButterPat(x = 0.26f, y = 0.42f, volume = 1.30f))
+                    butterPats.add(ButterPat(x = 0.74f, y = 0.42f, volume = 1.30f))
                 } else {
                     butterPats.add(ButterPat(x = 0.35f, y = 0.45f, volume = 1.15f))
                     butterPats.add(ButterPat(x = 0.65f, y = 0.52f, volume = 1.15f))
@@ -203,7 +219,7 @@ class ToastEngine(
 
     fun activatePowerUp(type: PowerUpType) {
         activePowerUps[type] = type.durationSeconds
-        audio.playStarSound(2)
+        playAudio { audio.playStarSound(2) }
         haptics.vibrateSuccess()
         spawnFloatingScorePopup("+ ${type.displayName}", knifePos.x, knifePos.y, isPositive = true)
 
@@ -256,53 +272,72 @@ class ToastEngine(
     }
 
     private fun checkInsideBread(nx: Float, ny: Float, type: BreadType): Boolean {
+        // Center-relative coordinates where 0.0 is center of screen
         val cx = nx - 0.5f
         val cy = ny - 0.5f
 
+        // Toast visual container is 0.76 of screen width and height
         return when (type) {
             BreadType.BAGEL -> {
                 val dist = sqrt(cx * cx + cy * cy)
-                dist in 0.10f..0.45f
+                // Bagel outer radius is 0.76 * 0.45 = 0.342, inner radius is 0.76 * 0.12 = 0.091
+                dist in 0.095f..0.340f
+            }
+            BreadType.CERAMIC_OVAL -> {
+                // Oval plate: outer half-radii (0.334w, 0.355h), inner hole half-radii (0.135w, 0.170h)
+                // Break / open notch at the bottom: cy > 0.16f and |cx| < 0.095f
+                val outerD = (cx * cx) / (0.334f * 0.334f) + (cy * cy) / (0.355f * 0.355f)
+                val innerD = (cx * cx) / (0.135f * 0.135f) + (cy * cy) / (0.170f * 0.170f)
+                val isOutsideOuter = outerD > 1.0f
+                val isInsideInnerHole = innerD < 1.0f
+                val isInBottomBreak = cy > 0.16f && kotlin.math.abs(cx) < 0.095f
+
+                !isOutsideOuter && !isInsideInnerHole && !isInBottomBreak
             }
             BreadType.SOURDOUGH -> {
-                val dx = cx / 0.44f
-                val dy = cy / 0.38f
+                // Sourdough oval is 0.76 * 0.94 = 0.714w, 0.76 * 0.82 = 0.623h (half-radii ~0.357, ~0.311)
+                val dx = cx / 0.355f
+                val dy = cy / 0.310f
                 (dx * dx + dy * dy) <= 1.0f
             }
+            BreadType.WAFFLE -> {
+                // Waffle rounded rectangle is 0.76 * 0.88 = 0.669w, 0.669h (half-extents ~0.334)
+                val inBounds = cx in -0.334f..0.334f && cy in -0.334f..0.334f
+                if (!inBounds) return false
+                val cornerDist = hypot(
+                    (kotlin.math.abs(cx) - 0.285f).coerceAtLeast(0f),
+                    (kotlin.math.abs(cy) - 0.285f).coerceAtLeast(0f)
+                )
+                cornerDist < 0.048f
+            }
+            BreadType.RYE -> {
+                // Rye bread slice: 0.76 * 0.88 = 0.669w, 0.76 * 0.84 = 0.638h
+                val inBounds = cx in -0.334f..0.334f && cy in -0.319f..0.319f
+                if (!inBounds) return false
+                val corner = hypot(
+                    (kotlin.math.abs(cx) - 0.260f).coerceAtLeast(0f),
+                    (kotlin.math.abs(cy) - 0.245f).coerceAtLeast(0f)
+                )
+                corner < 0.074f
+            }
             BreadType.BRIOCHE -> {
-                if (cx in -0.42f..0.42f && cy in -0.2f..0.42f) {
-                    true
-                } else if (cy < -0.2f && cy > -0.44f && cx in -0.42f..0.42f) {
-                    val archOffset = sin(cx * 15f) * 0.05f
-                    cy > -0.42f + archOffset
+                // Brioche slice with curved crown
+                if (cx !in -0.334f..0.334f) return false
+                if (cy in -0.12f..0.319f) return true
+                if (cy < -0.12f && cy >= -0.335f) {
+                    val archOffset = sin(cx * 18f) * 0.025f
+                    cy > -0.325f + archOffset
                 } else {
                     false
                 }
             }
-            BreadType.WAFFLE -> {
-                val inBounds = cx in -0.42f..0.42f && cy in -0.42f..0.42f
-                if (!inBounds) return false
-                val cornerDist = hypot(
-                    (kotlin.math.abs(cx) - 0.36f).coerceAtLeast(0f),
-                    (kotlin.math.abs(cy) - 0.36f).coerceAtLeast(0f)
-                )
-                cornerDist < 0.06f
-            }
-            BreadType.RYE -> {
-                val inBounds = cx in -0.45f..0.45f && cy in -0.38f..0.38f
-                if (!inBounds) return false
-                val corner = hypot(
-                    (kotlin.math.abs(cx) - 0.35f).coerceAtLeast(0f),
-                    (kotlin.math.abs(cy) - 0.28f).coerceAtLeast(0f)
-                )
-                corner < 0.10f
-            }
             BreadType.WHITE -> {
-                if (cx !in -0.42f..0.42f) return false
-                if (cy in -0.15f..0.42f) return true
-                if (cy < -0.15f && cy >= -0.45f) {
-                    val topY = (cy + 0.15f) / 0.30f
-                    val topX = cx / 0.43f
+                // Classic white bread slice: 0.76 * 0.88 = 0.669w, 0.76 * 0.84 = 0.638h (half-width 0.334, half-height 0.319)
+                if (cx !in -0.334f..0.334f) return false
+                if (cy in -0.10f..0.319f) return true
+                if (cy < -0.10f && cy >= -0.335f) {
+                    val topY = (cy + 0.10f) / 0.235f
+                    val topX = cx / 0.334f
                     (topX * topX + topY * topY) <= 1.0f
                 } else {
                     false
@@ -349,8 +384,9 @@ class ToastEngine(
                 val hitRadius = pat.initialSize * (if (butterMagnetActive) 1.8f else 1.0f)
                 if (dPat < hitRadius && nowSlice - pat.lastSliceTime > 300L) {
                     pat.lastSliceTime = nowSlice
-                    // Scoop clean, generous slice onto knife edge (caps at 0.85f)
-                    butterOnBlade = (butterOnBlade + 0.28f).coerceAtMost(0.85f)
+                    // Scoop clean, generous slice onto knife edge (higher capacity with butter_reservoir upgrade)
+                    val maxCapacity = if (unlockedUpgrades.contains("butter_reservoir")) 1.15f else 0.85f
+                    butterOnBlade = (butterOnBlade + 0.28f).coerceAtMost(maxCapacity)
                     pat.volume = (pat.volume - 0.08f).coerceAtLeast(0.05f)
 
                     val patGx = (pat.x * gridWidth).toInt().coerceIn(0, gridWidth - 1)
@@ -359,16 +395,17 @@ class ToastEngine(
                         grid[patGx][patGy].butter = (grid[patGx][patGy].butter + 0.20f).coerceAtMost(1.2f)
                     }
 
-                    audio.playSliceSound()
+                    playAudio { audio.playSliceSound() }
                     haptics.vibrateSlice()
                     spawnButterSparks(pat.x, pat.y, 4, level.butterType.solidColor)
                 }
             }
         }
 
-        // Blade sweep across toast cells with knife physical stats & multipliers (Wide knife scales both width & length!)
+        // Blade sweep across toast cells with knife physical stats & multipliers (Wide knife & wide_sweep upgrade)
         val bladeRad = (knifeAngle + 90f) * PI.toFloat() / 180f
-        val widthMult = knifeWidthMultiplier
+        val upgradeWidthBonus = if (unlockedUpgrades.contains("wide_sweep")) 0.20f else 0.0f
+        val widthMult = knifeWidthMultiplier + upgradeWidthBonus
         val lengthMult = 1.0f + (widthMult - 1.0f) * 0.65f
         val bladeLength = (knifeSkin.bladeLength / 1000f) * 0.55f * lengthMult
         val tipX = newPos.x + cos(bladeRad) * bladeLength * 0.5f
@@ -464,9 +501,20 @@ class ToastEngine(
             boundarySpillDetected = true
         }
 
-        // Bread tearing check: ONLY on hard butter + fragile bread + aggressive fast dragging
+        // Small board spill check: if knife spills over the edge of the small cutting board
+        var smallBoardSpillDetected = false
+        if (level.isSmallBoard) {
+            val distFromCenter = hypot(newPos.x - 0.5f, newPos.y - 0.5f)
+            if (distFromCenter > 0.36f && butterOnBlade > 0.05f && dist > 0.035f) {
+                smallBoardSpillDetected = true
+            }
+        }
+
+        // Bread tearing check: knife control & gentle_touch upgrade dampener
         val nowTear = System.currentTimeMillis()
-        val tearRisk = (level.butterHardness * 0.7f + level.breadType.fragility * 0.5f) / knifeSkin.controlFactor
+        val effectiveControl = knifeSkin.controlFactor * (if (unlockedUpgrades.contains("blade_hone")) 1.25f else 1.0f)
+        val tearDampener = if (unlockedUpgrades.contains("gentle_touch")) 0.50f else 1.0f
+        val tearRisk = ((level.butterHardness * 0.7f + level.breadType.fragility * 0.5f) / effectiveControl) * tearDampener
         if (!noMessShieldActive && level.butterHardness > 0.60f && level.breadType.fragility > 0.50f && dist > 0.085f && tearRisk > 0.65f && nowTear - lastTearTime > 800) {
             val midGx = (newPos.x * gridWidth).toInt().coerceIn(0, gridWidth - 1)
             val midGy = (newPos.y * gridHeight).toInt().coerceIn(0, gridHeight - 1)
@@ -476,31 +524,52 @@ class ToastEngine(
                 lastTearTime = nowTear
                 deductScore(50, "Torn Bread!", newPos.x, newPos.y)
                 tearPenaltiesTotal += 50
-                audio.playTearSound()
+                playAudio { audio.playTearSound() }
                 haptics.vibrateTear()
                 spawnButterSparks(newPos.x, newPos.y, 6, level.breadType.crustColor)
             }
         }
 
-        // Boundary spill deduction (unless shield is active)
-        if (boundarySpillDetected && !noMessShieldActive) {
+        // Boundary spill deduction (unless shield is active) - higher stakes on clothes in bus ride or off small board!
+        if ((boundarySpillDetected || smallBoardSpillDetected) && !noMessShieldActive) {
             val now = System.currentTimeMillis()
             if (now - lastSoundTime > 250) {
-                deductScore(10, "Off Boundary!", newPos.x, newPos.y)
-                boundaryPenaltiesTotal += 10
+                val penaltyReason = when {
+                    level.isBusRide -> "Clothes Stain!"
+                    smallBoardSpillDetected -> "Off Tiny Board!"
+                    else -> "Off Boundary!"
+                }
+                val penaltyAmount = if (level.isBusRide || smallBoardSpillDetected) 20 else 10
+                deductScore(penaltyAmount, penaltyReason, newPos.x, newPos.y)
+                boundaryPenaltiesTotal += penaltyAmount
                 haptics.vibrateTear()
-                audio.playScrapeSound()
+                playAudio { audio.playScrapeSound() }
                 lastSoundTime = now
             }
         }
 
         val now = System.currentTimeMillis()
+        val wasOnBread = lastDragPos?.let { p ->
+            val px = (p.x * gridWidth).toInt().coerceIn(0, gridWidth - 1)
+            val py = (p.y * gridHeight).toInt().coerceIn(0, gridHeight - 1)
+            breadMask[px][py]
+        } ?: false
+        val nowOnBread = breadMask[centerGx][centerGy]
+
+        // Haptic-only sensory challenge: vibration ticks when crossing bread boundary
+        if (level.isHapticOnly && wasOnBread != nowOnBread && dist > 0.02f) {
+            haptics.vibrateSlice()
+        }
+
         if (spreadHappened && now - lastSoundTime > 85) {
-            audio.playSpreadSound(intensity = (dist * 15f).coerceIn(0.3f, 1f))
+            playAudio { audio.playSpreadSound(intensity = (dist * 15f).coerceIn(0.3f, 1f)) }
             haptics.vibrateSpread()
             lastSoundTime = now
         } else if (scrapeSoundTriggered && now - lastSoundTime > 150) {
-            audio.playScrapeSound()
+            playAudio { audio.playScrapeSound() }
+            lastSoundTime = now
+        } else if (level.isHapticOnly && nowOnBread && dist > 0.02f && now - lastSoundTime > 70) {
+            haptics.vibrateSpread()
             lastSoundTime = now
         }
 
@@ -514,50 +583,51 @@ class ToastEngine(
         if (isDragging && butterOnBlade > 0.5f) {
             val gx = (knifePos.x * gridWidth).toInt()
             val gy = (knifePos.y * gridHeight).toInt()
-            val inside = gx in 0 until gridWidth && gy in 0 until gridHeight && breadMask[gx][gy]
-            if (!inside && !noMessShieldActive) {
-                deductScore(25, "Dropped Knife!", knifePos.x, knifePos.y)
-                dropPenaltiesTotal += 25
-                haptics.vibrateTear()
-            }
+        val inside = gx in 0 until gridWidth && gy in 0 until gridHeight && breadMask[gx][gy]
+        if (!inside && !noMessShieldActive && !unlockedUpgrades.contains("steady_hand")) {
+            deductScore(25, "Dropped Knife!", knifePos.x, knifePos.y)
+            dropPenaltiesTotal += 25
+            haptics.vibrateTear()
         }
-
-        isDragging = false
-        lastDragPos = null
-        redrawTick++
     }
 
-    private fun deductScore(points: Int, reason: String, x: Float, y: Float) {
-        currentScore = (currentScore - points).coerceAtLeast(0f)
-        spawnFloatingScorePopup("- $points $reason", x, y, isPositive = false)
-    }
+    isDragging = false
+    lastDragPos = null
+    redrawTick++
+}
 
-    private fun spawnFloatingScorePopup(text: String, x: Float, y: Float, isPositive: Boolean) {
-        scorePopups.add(
-            ScoreFloatingPopup(
-                id = ++popupIdCounter,
-                text = text,
-                x = x.coerceIn(0.1f, 0.9f),
-                y = y.coerceIn(0.1f, 0.9f),
-                isPositive = isPositive
-            )
+private fun deductScore(points: Int, reason: String, x: Float, y: Float) {
+    currentScore = (currentScore - points).coerceAtLeast(0f)
+    spawnFloatingScorePopup("- $points $reason", x, y, isPositive = false)
+}
+
+private fun spawnFloatingScorePopup(text: String, x: Float, y: Float, isPositive: Boolean) {
+    scorePopups.add(
+        ScoreFloatingPopup(
+            id = ++popupIdCounter,
+            text = text,
+            x = x.coerceIn(0.1f, 0.9f),
+            y = y.coerceIn(0.1f, 0.9f),
+            isPositive = isPositive
         )
+    )
+}
+
+fun updateSimulation(dtSeconds: Float) {
+    if (isFinished) return
+
+    // Time score decay: decrease score slightly over time (2.5 pts/sec, or 1.25 pts/sec with speed_spreader upgrade)
+    val decayMultiplier = if (unlockedUpgrades.contains("speed_spreader")) 0.50f else 1.0f
+    val scoreDecay = dtSeconds * 2.5f * decayMultiplier
+    currentScore = (currentScore - scoreDecay).coerceAtLeast(0f)
+    timeScoreLoss += scoreDecay
+
+    // Decrement timer
+    timeRemainingSeconds = (timeRemainingSeconds - dtSeconds).coerceAtLeast(0f)
+    if (timeRemainingSeconds <= 0f) {
+        finishGame()
+        return
     }
-
-    fun updateSimulation(dtSeconds: Float) {
-        if (isFinished) return
-
-        // Time score decay: decrease score slightly over time (2.5 pts/sec) to encourage speed
-        val scoreDecay = dtSeconds * 2.5f
-        currentScore = (currentScore - scoreDecay).coerceAtLeast(0f)
-        timeScoreLoss += scoreDecay
-
-        // Decrement timer
-        timeRemainingSeconds = (timeRemainingSeconds - dtSeconds).coerceAtLeast(0f)
-        if (timeRemainingSeconds <= 0f) {
-            finishGame()
-            return
-        }
 
         // Update active power-ups
         val powerUpIter = activePowerUps.entries.iterator()
@@ -577,6 +647,45 @@ class ToastEngine(
             } else {
                 entry.setValue(remaining)
             }
+        }
+
+        // Bus Ride Shake Physics (Level 15: Rosa Parks in front passenger seat)
+        if (level.isBusRide) {
+            busShakeTimer -= dtSeconds
+            // Constant bus chassis engine rumble & road undulation
+            val rumbleTime = System.currentTimeMillis() * 0.025f
+            val baseRumbleX = sin(rumbleTime * 1.8f) * 0.007f + (Random.nextFloat() - 0.5f) * 0.005f
+            val baseRumbleY = cos(rumbleTime * 2.3f) * 0.008f + (Random.nextFloat() - 0.5f) * 0.006f
+
+            // Periodic significant road potholes / bumps (every 1.5 - 2.5s)
+            if (busShakeTimer <= 0f) {
+                busShakeTimer = 1.4f + Random.nextFloat() * 1.5f
+                busShakeMagnitude = 0.038f + Random.nextFloat() * 0.028f
+                haptics.vibrateSlice()
+                playAudio { audio.playScrapeSound() }
+            }
+
+            var bumpX = 0f
+            var bumpY = 0f
+            if (busShakeMagnitude > 0f) {
+                bumpX = (Random.nextFloat() - 0.5f) * busShakeMagnitude
+                bumpY = (Random.nextFloat() - 0.5f) * busShakeMagnitude * 0.9f
+                busShakeMagnitude = (busShakeMagnitude - dtSeconds * 0.12f).coerceAtLeast(0f)
+            }
+
+            val totalShake = Offset(baseRumbleX + bumpX, baseRumbleY + bumpY)
+            busShakeOffset = totalShake
+
+            // Displace the user's knife while holding it in the bus
+            if (isDragging) {
+                val displacedKnife = Offset(
+                    (knifePos.x + totalShake.x * 0.65f).coerceIn(0.12f, 0.88f),
+                    (knifePos.y + totalShake.y * 0.65f).coerceIn(0.12f, 0.88f)
+                )
+                onDrag(displacedKnife)
+            }
+        } else {
+            busShakeOffset = Offset.Zero
         }
 
         // Butter Magnet attracts floating power-up tokens toward knife
@@ -668,15 +777,17 @@ class ToastEngine(
             }
         }
 
-        // Token spawn timer
+        // Token spawn timer (accelerated if golden_pat_luck is active)
         tokenSpawnTimer -= dtSeconds
         if (tokenSpawnTimer <= 0f) {
             spawnRandomPowerUpToken()
-            tokenSpawnTimer = 18f + Random.nextFloat() * 8f
+            val intervalMult = if (unlockedUpgrades.contains("golden_pat_luck")) 0.65f else 1.0f
+            tokenSpawnTimer = (18f + Random.nextFloat() * 8f) * intervalMult
         }
 
-        // Melt butter on warm toast
-        val baseMeltSpeed = level.toastTemp * 0.28f * (if (goldenMeltActive) 3.5f else 1.0f)
+        // Melt butter on warm toast (enhanced with thermal_edge upgrade)
+        val thermalBonus = if (unlockedUpgrades.contains("thermal_edge")) 1.30f else 1.0f
+        val baseMeltSpeed = level.toastTemp * 0.28f * (if (goldenMeltActive) 3.5f else 1.0f) * thermalBonus
         val steamChance = level.toastTemp * 0.18f
 
         for (x in 0 until gridWidth) {
@@ -843,7 +954,7 @@ class ToastEngine(
 
         if (passed) {
             haptics.vibrateSuccess()
-            audio.playStarSound(stars)
+            playAudio { audio.playStarSound(stars) }
         }
 
         return GameResult(

@@ -85,6 +85,18 @@ enum class BreadType(
         spreadFriction = 1.1f,
         unlockStars = 24,
         unlockCoins = 1000
+    ),
+    CERAMIC_OVAL(
+        id = "ceramic_oval",
+        displayName = "Ceramic Open-Oval Plate",
+        description = "Artisanal glazed porcelain serving ring. Smooth curved rim with a center cutout and bottom opening gap.",
+        crustColor = Color(0xFFCBD5E1),
+        crumbColor = Color(0xFFF8FAFC),
+        toastedCrumbColor = Color(0xFFE2E8F0),
+        fragility = 0.05f,
+        spreadFriction = 0.70f,
+        unlockStars = 30,
+        unlockCoins = 1200
     );
 
     companion object {
@@ -149,6 +161,36 @@ enum class ButterType(
         shineColor = Color(0xFFFFFDE7),
         hasFlecks = true,
         fleckColor = Color(0xFF212121)
+    ),
+    BANANA_MAYO(
+        id = "banana_mayo",
+        displayName = "Creamy Mayo & Banana Glaze",
+        description = "Vintage Southern classic: rich creamy mayonnaise with sweet banana slices.",
+        solidColor = Color(0xFFFFFEE4),
+        meltedColor = Color(0xFFFFF9C4),
+        shineColor = Color(0xFFFFFFFF),
+        hasFlecks = true,
+        fleckColor = Color(0xFFFDD835)
+    ),
+    AVOCADO_CREAM(
+        id = "avocado_cream",
+        displayName = "Zesty Avocado Mash",
+        description = "Whipped Haas avocado with lime zest and cracked pepper.",
+        solidColor = Color(0xFFC5E1A5),
+        meltedColor = Color(0xFFAED581),
+        shineColor = Color(0xFFDCEDC8),
+        hasFlecks = true,
+        fleckColor = Color(0xFF33691E)
+    ),
+    VEGEMITE(
+        id = "vegemite",
+        displayName = "Aussie Vegemite Spread",
+        description = "Thick, glossy dark brown savoury yeast extract paste. Bold aroma and smooth spreadability.",
+        solidColor = Color(0xFF2E1C0C),
+        meltedColor = Color(0xFF1E1106),
+        shineColor = Color(0xFF4E3620),
+        hasFlecks = true,
+        fleckColor = Color(0xFF5D4037)
     );
 
     companion object {
@@ -331,8 +373,122 @@ data class Level(
     val timeLimitSeconds: Int = 45,
     val star1Coverage: Float = 0.50f,
     val star2Coverage: Float = 0.70f,
-    val star3Coverage: Float = 0.85f
+    val star3Coverage: Float = 0.85f,
+    val isHapticOnly: Boolean = false,
+    val isBusRide: Boolean = false,
+    val hasBananas: Boolean = false,
+    val isSmallBoard: Boolean = false,
+    val isCeramicPlate: Boolean = false
 )
+
+data class PointUpgrade(
+    val id: String,
+    val name: String,
+    val category: String, // "Blade Mastery", "Technique", "Perks", "Currency Exchange"
+    val description: String,
+    val pointCost: Int,
+    val isRepeatable: Boolean = false
+) {
+    companion object {
+        val ALL_UPGRADES: List<PointUpgrade> = listOf(
+            PointUpgrade(
+                id = "blade_hone",
+                name = "Diamond Blade Hone",
+                category = "Blade Mastery",
+                description = "+25% knife control & precision stroke stability on all knives",
+                pointCost = 1200
+            ),
+            PointUpgrade(
+                id = "thermal_edge",
+                name = "Thermal Edge",
+                category = "Blade Mastery",
+                description = "Warms cold butter +30% faster during spreading",
+                pointCost = 2000
+            ),
+            PointUpgrade(
+                id = "wide_sweep",
+                name = "Wide Sweep Technique",
+                category = "Technique",
+                description = "Expands active butter deposit swath by +20%",
+                pointCost = 2800
+            ),
+            PointUpgrade(
+                id = "gentle_touch",
+                name = "Velvet Crumb Shield",
+                category = "Technique",
+                description = "Reduces bread tear sensitivity by 50% on delicate toasts",
+                pointCost = 3500
+            ),
+            PointUpgrade(
+                id = "butter_reservoir",
+                name = "Deep Butter Reservoir",
+                category = "Blade Mastery",
+                description = "Knife edge holds up to 1.15x butter volume per pat slice",
+                pointCost = 4500
+            ),
+            PointUpgrade(
+                id = "coin_multiplier",
+                name = "Golden Toast Mastery",
+                category = "Perks",
+                description = "Permanently doubles all bakery coins earned from level completions!",
+                pointCost = 6000
+            ),
+            PointUpgrade(
+                id = "coin_pack_small",
+                name = "Coin Exchange (150 Coins)",
+                category = "Currency Exchange",
+                description = "Exchange 600 score points for 150 Bakery Coins",
+                pointCost = 600,
+                isRepeatable = true
+            ),
+            PointUpgrade(
+                id = "coin_pack_large",
+                name = "Coin Exchange (500 Coins)",
+                category = "Currency Exchange",
+                description = "Exchange 1,800 score points for 500 Bakery Coins",
+                pointCost = 1800,
+                isRepeatable = true
+            ),
+            PointUpgrade(
+                id = "powerup_bundle",
+                name = "Chef's Power-Up Box (2x Random)",
+                category = "Perks",
+                description = "Receive 2 random power-ups to use during levels",
+                pointCost = 800,
+                isRepeatable = true
+            ),
+            PointUpgrade(
+                id = "steady_hand",
+                name = "Steady Hand Grip",
+                category = "Blade Mastery",
+                description = "Completely eliminates score penalties from dropping the knife off the board",
+                pointCost = 2400
+            ),
+            PointUpgrade(
+                id = "speed_spreader",
+                name = "Speed Spreader",
+                category = "Technique",
+                description = "Slows score decay over time by 50% across all levels",
+                pointCost = 3200
+            ),
+            PointUpgrade(
+                id = "golden_pat_luck",
+                name = "Golden Pat Magnetism",
+                category = "Perks",
+                description = "Spawns bonus floating power-up tokens 50% more frequently",
+                pointCost = 4000
+            ),
+            PointUpgrade(
+                id = "coin_pack_mega",
+                name = "Mega Coin Exchange (1,200 Coins)",
+                category = "Currency Exchange",
+                description = "Exchange 3,500 score points for 1,200 Bakery Coins",
+                pointCost = 3500,
+                isRepeatable = true
+            )
+        )
+    }
+}
 
 data class PowerUpToken(
     val id: Long,

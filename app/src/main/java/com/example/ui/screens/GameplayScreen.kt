@@ -60,6 +60,7 @@ fun GameplayScreen(
     level: Level,
     knifeSkin: KnifeSkin,
     powerUpInventory: Map<String, Int>,
+    unlockedUpgrades: Set<String> = emptySet(),
     audio: AudioSynthesizer,
     haptics: HapticManager,
     prefs: GamePreferences,
@@ -67,8 +68,14 @@ fun GameplayScreen(
     onNextLevel: (Level) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val engine = remember(level, knifeSkin) {
-        ToastEngine(level = level, knifeSkin = knifeSkin, audio = audio, haptics = haptics)
+    val engine = remember(level, knifeSkin, unlockedUpgrades) {
+        ToastEngine(
+            level = level,
+            knifeSkin = knifeSkin,
+            audio = audio,
+            haptics = haptics,
+            unlockedUpgrades = unlockedUpgrades
+        )
     }
 
     var resultModalData by remember { mutableStateOf<GameResult?>(null) }
@@ -251,6 +258,226 @@ fun GameplayScreen(
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFFFFFBEB),
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+
+            // Sensory Guidance Card for Level 14 (Helen Keller Butters Bread)
+            if (level.isHapticOnly && !tutorialDismissed && resultModalData == null) {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF1E1B4B).copy(alpha = 0.94f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 20.dp)
+                        .border(1.5.dp, Color(0xFF818CF8), RoundedCornerShape(20.dp))
+                        .testTag("sensory_guidance_card")
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF6366F1),
+                                    modifier = Modifier.padding(end = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "TOUCH ONLY",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 11.sp,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "Feel With Your Hands",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFE0E7FF)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { tutorialDismissed = true },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Hide guidance",
+                                    tint = Color(0xFFD1D5DB),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = if (level.isSmallBoard) {
+                                "The Ultimate Challenge! You are buttering a round bagel on a tiny cutting board with no sight or sound. Feel the vibration clicks around the bagel edges, mind the center hole, and keep your knife from sliding off the tiny board!"
+                            } else {
+                                "Bread and butter are invisible & muted. Glide your knife across the board; feel the vibration texture when on the bread, and clicks when crossing edges or scooping butter!"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFFE0E7FF),
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+
+            // Bus Lap Guidance Card for Level 15 (Rosa Parks Butters Bread)
+            if (level.isBusRide && !tutorialDismissed && resultModalData == null) {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF0F172A).copy(alpha = 0.94f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 20.dp)
+                        .border(1.5.dp, Color(0xFF38BDF8), RoundedCornerShape(20.dp))
+                        .testTag("bus_lap_guidance_card")
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF0284C7),
+                                    modifier = Modifier.padding(end = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "BUS COMMUTE",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 11.sp,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "Front Seat Lap Balance",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFBAE6FD)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { tutorialDismissed = true },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Hide guidance",
+                                    tint = Color(0xFFD1D5DB),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = "You're in the front passenger seat! The bus jolts and shakes over bumps. Keep steady knife control and spread butter on the napkin without getting any butter on the trouser fabric!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFFF0F9FF),
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+
+            // Banana Mayo Sandwich Guidance Card for Level 16
+            if (level.hasBananas && !tutorialDismissed && resultModalData == null) {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF1C1917).copy(alpha = 0.94f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 20.dp)
+                        .border(1.5.dp, Color(0xFFFACC15), RoundedCornerShape(20.dp))
+                        .testTag("banana_mayo_guidance_card")
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFFEAB308),
+                                    modifier = Modifier.padding(end = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "SOUTHERN COMFORT",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 11.sp,
+                                        color = Color.Black,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "George's Banana Mayo",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFFEF08A)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { tutorialDismissed = true },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Hide guidance",
+                                    tint = Color(0xFFD1D5DB),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = "A vintage Southern staple! Scoop the rich mayonnaise and glide smoothly over the soft white bread and across the banana slices for an authentic sandwich.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFFFEF9C3),
                             lineHeight = 18.sp
                         )
                     }

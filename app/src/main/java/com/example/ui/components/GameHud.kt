@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -171,50 +172,93 @@ fun GameHud(
                 .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-                // Coverage row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Butter Coverage",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        if (isTargetMet) {
-                            Spacer(modifier = Modifier.width(6.dp))
+                // Coverage row (adapted for Helen Keller haptic sensory level)
+                if (level.isHapticOnly) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Target reached",
-                                tint = Color(0xFF2E7D32),
-                                modifier = Modifier.size(16.dp)
+                                imageVector = Icons.Default.Vibration,
+                                contentDescription = null,
+                                tint = Color(0xFF6366F1),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Haptic Touch Guidance",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF4338CA)
                             )
                         }
+
+                        Text(
+                            text = if (isTargetMet) "Target Met! (Tap Serve)" else "Sensing Touch...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isTargetMet) Color(0xFF2E7D32) else Color(0xFF6366F1)
+                        )
                     }
 
-                    Text(
-                        text = "$coveragePercent% / $targetPercent%",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isTargetMet) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary
+                    Spacer(modifier = Modifier.height(5.dp))
+
+                    val progressFraction = (engine.currentCoverage / level.targetCoverage).coerceIn(0f, 1f)
+                    LinearProgressIndicator(
+                        progress = { progressFraction },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = if (isTargetMet) Color(0xFF2E7D32) else Color(0xFF6366F1),
+                        trackColor = Color(0x336366F1)
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Butter Coverage",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            if (isTargetMet) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Target reached",
+                                    tint = Color(0xFF2E7D32),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "$coveragePercent% / $targetPercent%",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isTargetMet) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(5.dp))
+
+                    val progressFraction = (engine.currentCoverage / level.targetCoverage).coerceIn(0f, 1f)
+                    LinearProgressIndicator(
+                        progress = { progressFraction },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = if (isTargetMet) Color(0xFF2E7D32) else Color(0xFFF59E0B),
+                        trackColor = Color(0x339E9E9E)
                     )
                 }
-
-                Spacer(modifier = Modifier.height(5.dp))
-
-                // Progress bar
-                val progressFraction = (engine.currentCoverage / level.targetCoverage).coerceIn(0f, 1f)
-                LinearProgressIndicator(
-                    progress = { progressFraction },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = if (isTargetMet) Color(0xFF2E7D32) else Color(0xFFF59E0B),
-                    trackColor = Color(0x339E9E9E)
-                )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
